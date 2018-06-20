@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import argparse
 import ast
@@ -301,7 +302,7 @@ def train(args):
         else:
             print "init fluid.framework.default_startup_program"
             exe.run(fluid.framework.default_startup_program())
-
+        sys.stderr.write('1111\n')
         train_data = reader.DataReader(
             src_vocab_fpath=args.src_vocab_fpath,
             trg_vocab_fpath=args.trg_vocab_fpath,
@@ -316,6 +317,7 @@ def train(args):
             end_mark=args.special_token[1],
             unk_mark=args.special_token[2],
             clip_last_batch=False)
+        sys.stderr.write('1112222\n')
 
         train_data = read_multiple(reader=train_data.batch_generator)
         build_strategy = fluid.BuildStrategy()
@@ -384,6 +386,7 @@ def train(args):
 
             return test
 
+        sys.stderr.write('2222\n')
         if args.val_file_pattern is not None:
             test = test_context()
 
@@ -391,9 +394,12 @@ def train(args):
                                                                                  -1] + label_data_input_fields
         util_input_names = encoder_util_input_fields + decoder_util_input_fields
         init = False
+        sys.stderr.write('start training!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
         for pass_id in xrange(TrainTaskConfig.pass_num):
             pass_start_time = time.time()
+            sys.stderr.write('pass %d\n' % pass_id)
             for batch_id, data in enumerate(train_data()):
+                sys.stderr.write('batch %d\n' % batch_id)
                 feed_list = []
                 total_num_token = 0
                 #lr_rate = lr_scheduler.update_learning_rate()
@@ -418,6 +424,7 @@ def train(args):
                         "@GRAD"] = 1. / total_num_token if TrainTaskConfig.use_avg_cost else np.asarray(
                             [1.], dtype="float32")
                 outs = train_exe.run(fetch_list=[sum_cost.name, token_num.name], feed=feed_list)
+                train_exe.bcast_params()
                 #outs = exe.run(train_progm,fetch_list=[sum_cost.name, token_num.name],feed=feed_list[0])
                 sum_cost_val, token_num_val = np.array(outs[0]), np.array(outs[1])
                 total_sum_cost = sum_cost_val.sum(
